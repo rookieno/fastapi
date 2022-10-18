@@ -1,5 +1,5 @@
 from typing import Union
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from enum import Enum
 
@@ -7,8 +7,9 @@ app = FastAPI()
 
 class Item(BaseModel):
     name: str
+    description: Union[str, None] = None
     price: float
-    is_offer: Union[bool, None] = None
+    tax: Union[float, None] = None
 
 
 class ModelName(str, Enum):
@@ -68,6 +69,43 @@ fake_items_db = [{"item_name": "Foo"}, {"item_name": "Bar"}, {"item_name": "Baz"
 # 쿼리 매개변수는 고정된 부분이 아니므로 선택적일 수 있고 기본값을 가질 수 있음
 # http://127.0.0.1:8000/items/ 로 이동하면
 # http://127.0.0.1:8000/items/?skip=0&limit=10 와 같다.
+# @app.get("/items/")
+# async def read_item(skip: int = 0, limit: int = 10):
+#     return fake_items_db[skip : skip + limit]
+
+# 생성한 모델로 매개변수처럼 선언
+# 동작 원리
+# 요청 본문을 JSON으로 읽음
+# 해당 유형을 변환(필요할시)
+# 데이터를 검증(유효핮 않으면 명확한 오류를 반환)
+# 매개변수에 수신된 데이터를 제공
+# OpenAPI 스키마의 일부이며 자동문서 UI에 적용된다.
+@app.post("/items/")
+async def create_item(item: Item):
+    return item
+
+# 쿼리 매개변수 및 문자열 유효성 검사
+# q가 optional하고 길이가 50자 초과하지 않도록 강제
+# 최소 길이: min_length
+# 정규식: regex
+# 기본값 default, ...으로 리터럴 값으로 설정 할 수 있음, pydantic의 Required으로도 가능함
+# title, description 기능 제공
+# alias 설정
+# deprecated=True 사용되지 않음
+# include_in_schema=False OpenAPU에서 제외
 @app.get("/items/")
-async def read_item(skip: int = 0, limit: int = 10):
-    return fake_items_db[skip : skip + limit]
+async def read_items(
+    q: Union[str, None] = Query(
+        default=None,
+        max_length=50,
+        title="Query string",
+        description="Query string for the items to search in the database that have a good match",
+        alias="item-query",
+        deprecated=True,
+        include_in_schema=False,
+        )
+    ):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
