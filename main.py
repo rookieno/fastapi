@@ -1,5 +1,5 @@
 from typing import Union
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Path
 from pydantic import BaseModel
 from enum import Enum
 
@@ -22,9 +22,19 @@ class ModelName(str, Enum):
 async def read_root():
     return {"Hello": "World"}
 
+# Query에 동일한 매개변수를 선언할 수 있다.
+# title 메타데이터 값을 item_id에 선언할 때 아래와 같다.
+# 경로 매개변수는 필수임으로 ...으로 필수임을 나타내는게 좋다.
+# gt, ge, lt, le 검증 가능
 @app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+async def read_items(
+    item_id: int = Path(title="The ID of the item to get", ge=1),
+    q: Union[str, None] = Query(default=None, alias="item-query"),
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results
 
 @app.put("/items/{item_id}")
 def update_item(item_id: int, item: Item):
@@ -92,7 +102,7 @@ async def create_item(item: Item):
 # title, description 기능 제공
 # alias 설정
 # deprecated=True 사용되지 않음
-# include_in_schema=False OpenAPU에서 제외
+# include_in_schema=False OpenAPI에서 제외
 @app.get("/items/")
 async def read_items(
     q: Union[str, None] = Query(
