@@ -1,15 +1,19 @@
 from typing import Union
-from fastapi import FastAPI, Query, Path
-from pydantic import BaseModel
+from fastapi import Body, FastAPI, Query, Path
+from pydantic import BaseModel, Field
 from enum import Enum
 
 app = FastAPI()
 
 class Item(BaseModel):
     name: str
-    description: Union[str, None] = None
-    price: float
+    description: Union[str, None] = Field(default=None, title="The description of the item", max_length=300)
+    price: float = Field(gt=0, description="The price must be greater than zero")
     tax: Union[float, None] = None
+
+class User(BaseModel):
+    username: str
+    full_name: Union[str, None] = None
 
 
 class ModelName(str, Enum):
@@ -36,9 +40,22 @@ async def read_items(
         results.update({"q": q})
     return results
 
+# 단일 request body에는 키값을 생략하고 안의 데이터만 해석하도록 되어있음
+# 키값을 부여하고 싶을 때 -> embed = True request body에 키값을 넣어줌
 @app.put("/items/{item_id}")
-def update_item(item_id: int, item: Item):
-    return {"item_name": item.name, "item_price": item.price ,"item_id": item_id}
+async def update_item(
+    *,
+    item_id: int = Path(title="The ID of the item to get", ge=0, le=1000),
+    q: Union[str, None] = None,
+    item: Item = Body(embed=True),
+    user: User,
+):
+    results = {"item_id": item_id, "user": user}
+    if q:
+        results.update({"q": q})
+    if item:
+        results.update({"item": item})
+    return results
 
 # 경로 동작을 만들때 고정 경로를 갖고 있는 상황이 생길 수 있다
 # /users/me 현재 사용자의 데이터를 가져온다.
