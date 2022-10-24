@@ -1,10 +1,13 @@
 from typing import Union
-from fastapi import Body, FastAPI, Query, Path
+from fastapi import APIRouter, Body, FastAPI, Query, Path
 from pydantic import BaseModel, Field
 from enum import Enum
 
 app = FastAPI()
 
+# 엔드포인트를 한데 묶어서 관리
+api = APIRouter(prefix="/api")
+app.include_router(api)
 class Item(BaseModel):
     name: str
     description: Union[str, None] = Field(default=None, title="The description of the item", max_length=300)
